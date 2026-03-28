@@ -30,6 +30,12 @@ app.include_router(chat_router)
 app.include_router(weight_router)
 
 
+@app.get("/test-sentry")
+async def test_sentry():
+    """Hit this to verify Sentry captures backend errors."""
+    raise ValueError("Sentry test — backend monitoring is working")
+
+
 @app.middleware("http")
 async def sentry_user_middleware(request: Request, call_next):
     """Attach authenticated user ID to every Sentry event."""
