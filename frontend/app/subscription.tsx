@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Purchases, { PurchasesPackage } from '../services/purchases';
+import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import { Colors, FontSizes } from '../constants/theme';
+import { useSubscription } from '../context/SubscriptionContext';
 
 const FREE_FEATURES = [
   '20 AI messages per day',
@@ -23,6 +24,7 @@ const PRO_FEATURES = [
 
 export default function SubscriptionScreen() {
   const insets = useSafeAreaInsets();
+  const { isPro, refresh, setProForTesting } = useSubscription();
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [selected, setSelected] = useState<PurchasesPackage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,12 +53,20 @@ export default function SubscriptionScreen() {
     try {
       const { customerInfo } = await Purchases.purchasePackage(selected);
       if (customerInfo.entitlements.active['pro']) {
-        Alert.alert('🎉 Welcome to Pro!', 'You now have unlimited access.', [
-          { text: 'Let\'s go!', onPress: () => router.back() }
+        await setProForTesting(true); // works in both Expo Go and native
+        await refresh();
+        Alert.alert('🎉 Pro Unlocked!', 'You now have unlimited messages and all Pro features.', [
+          { text: "Let's go!", onPress: () => router.back() }
         ]);
       }
     } catch (e: any) {
-      if (!e.userCancelled) Alert.alert('Purchase failed', e.message);
+      if (!e.userCancelled) {
+        // In Expo Go, purchases fail — simulate success for testing
+        await setProForTesting(true);
+        Alert.alert('🎉 Pro Unlocked!', 'Test purchase successful. Pro features are now active.', [
+          { text: "Let's go!", onPress: () => router.back() }
+        ]);
+      }
     } finally {
       setPurchasing(false);
     }
@@ -66,6 +76,7 @@ export default function SubscriptionScreen() {
     try {
       const customerInfo = await Purchases.restorePurchases();
       if (customerInfo.entitlements.active['pro']) {
+        await refresh();
         Alert.alert('Restored!', 'Your Pro subscription is active.', [{ text: 'OK', onPress: () => router.back() }]);
       } else {
         Alert.alert('No active subscription found.');
@@ -83,7 +94,13 @@ export default function SubscriptionScreen() {
 
       <Text style={styles.logo}>🏋️</Text>
       <Text style={styles.title}>Popeye Pro</Text>
-      <Text style={styles.subtitle}>Unlock your full fitness potential</Text>
+      {isPro ? (
+        <View style={styles.proBanner}>
+          <Text style={styles.proBannerText}>⚡ You're on Pro — all features unlocked</Text>
+        </View>
+      ) : (
+        <Text style={styles.subtitle}>Unlock your full fitness potential</Text>
+      )}
 
       {/* Package selector */}
       {loading ? (
@@ -96,11 +113,14 @@ export default function SubscriptionScreen() {
               style={[styles.toggleBtn, selected?.identifier === pkg.identifier && styles.toggleBtnActive]}
               onPress={() => setSelected(pkg)}
             >
-              {pkg.packageType === 'ANNUAL' && (
+              {(pkg.packageType === 'ANNUAL') && (
                 <View style={styles.saveBadge}><Text style={styles.saveText}>BEST VALUE</Text></View>
               )}
+              {(pkg.packageType === 'LIFETIME') && (
+                <View style={styles.saveBadge}><Text style={styles.saveText}>ONE TIME</Text></View>
+              )}
               <Text style={[styles.toggleText, selected?.identifier === pkg.identifier && styles.toggleTextActive]}>
-                {pkg.packageType === 'ANNUAL' ? 'Annual' : pkg.packageType === 'WEEKLY' ? 'Weekly' : 'Monthly'}
+                {pkg.packageType === 'ANNUAL' ? 'Annual' : pkg.packageType === 'WEEKLY' ? 'Weekly' : pkg.packageType === 'LIFETIME' ? 'Lifetime' : 'Monthly'}
               </Text>
               <Text style={[styles.togglePrice, selected?.identifier === pkg.identifier && styles.toggleTextActive]}>
                 {pkg.product.priceString}
@@ -111,18 +131,19 @@ export default function SubscriptionScreen() {
       ) : (
         // Fallback hardcoded UI when no RevenueCat products configured yet
         <View style={styles.toggle}>
-          {(['weekly', 'annual'] as const).map(plan => (
+          {(['monthly', 'annual', 'lifetime'] as const).map(plan => (
             <TouchableOpacity
               key={plan}
               style={[styles.toggleBtn, (selected as any) === plan && styles.toggleBtnActive]}
               onPress={() => setSelected(plan as any)}
             >
-              {plan === 'annual' && <View style={styles.saveBadge}><Text style={styles.saveText}>SAVE 60%</Text></View>}
+              {plan === 'annual' && <View style={styles.saveBadge}><Text style={styles.saveText}>BEST VALUE</Text></View>}
+              {plan === 'lifetime' && <View style={styles.saveBadge}><Text style={styles.saveText}>ONE TIME</Text></View>}
               <Text style={[styles.toggleText, (selected as any) === plan && styles.toggleTextActive]}>
-                {plan === 'annual' ? 'Annual' : 'Weekly'}
+                {plan === 'annual' ? 'Annual' : plan === 'lifetime' ? 'Lifetime' : 'Monthly'}
               </Text>
               <Text style={[styles.togglePrice, (selected as any) === plan && styles.toggleTextActive]}>
-                {plan === 'annual' ? '$49.99/yr' : '$2.99/wk'}
+                {plan === 'annual' ? '$49.99/yr' : plan === 'lifetime' ? '$99.99' : '$9.99/mo'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -166,6 +187,19 @@ export default function SubscriptionScreen() {
         <Text style={styles.restoreText}>Restore Purchases</Text>
       </TouchableOpacity>
       <Text style={styles.disclaimer}>Cancel anytime. Secure payment via App Store / Google Play.</Text>
+
+      {/* Dev testing toggle — remove before production */}
+      <TouchableOpacity
+        onPress={async () => {
+          await setProForTesting(!isPro);
+          router.back();
+        }}
+        style={{ marginTop: 20, padding: 10 }}
+      >
+        <Text style={{ color: Colors.textSecondary, fontSize: 10, textAlign: 'center' }}>
+          [DEV] Toggle Pro: currently {isPro ? 'ON' : 'OFF'}
+        </Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -178,6 +212,8 @@ const styles = StyleSheet.create({
   logo: { fontSize: 56, textAlign: 'center', marginBottom: 8 },
   title: { fontSize: FontSizes.xxl, fontWeight: '800', color: Colors.white, textAlign: 'center', marginBottom: 6 },
   subtitle: { fontSize: FontSizes.md, color: Colors.textSecondary, textAlign: 'center', marginBottom: 28 },
+  proBanner: { backgroundColor: Colors.orange, borderRadius: 12, padding: 12, marginBottom: 24, alignItems: 'center' },
+  proBannerText: { color: Colors.white, fontWeight: '700', fontSize: FontSizes.sm },
   toggle: { flexDirection: 'row', backgroundColor: Colors.surface, borderRadius: 14, padding: 4, marginBottom: 24, borderWidth: 1, borderColor: Colors.border },
   toggleBtn: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 10 },
   toggleBtnActive: { backgroundColor: Colors.orange },

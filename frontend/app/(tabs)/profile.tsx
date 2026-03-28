@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Alert, TextInput, Modal, Animated, Pressable,
+  Alert, TextInput, Modal, Animated, Pressable, KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, FontSizes } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
+import { useSubscription } from '../../context/SubscriptionContext';
 import { logWeight, getWeightLogs } from '../../services/api';
 import { getWorkoutPlan } from '../../services/api';
 
@@ -135,6 +136,7 @@ function ConsistencyGraph({ logs }: { logs: WeightLog[] }) {
 
 export default function ProfileScreen() {
   const { signOut } = useAuth();
+  const { isPro } = useSubscription();
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>([]);
@@ -177,6 +179,7 @@ export default function ProfileScreen() {
   const logWeight = async () => {
     const w = parseFloat(newWeight);
     if (!w || w < 20 || w > 300) return Alert.alert('Error', 'Enter a valid weight');
+    Keyboard.dismiss();
     const today = new Date().toISOString().slice(0, 10);
     const updated = [...weightLogs.filter(l => l.date !== today), { date: today, weight: w }]
       .sort((a, b) => a.date.localeCompare(b.date)).slice(-30);
@@ -202,7 +205,10 @@ export default function ProfileScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={styles.headerTitle}>Profile</Text>
+          {isPro && <View style={styles.proTag}><Text style={styles.proTagText}>⚡ PRO</Text></View>}
+        </View>
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => workoutPlan ? router.push('/subscription') : Alert.alert('No plan yet', 'Chat with Popeye and ask for a workout plan first.')}
@@ -262,26 +268,47 @@ export default function ProfileScreen() {
         <ConsistencyGraph logs={weightLogs} />
       </View>
 
-      {/* Workout Plan — locked PRO feature */}
-      <TouchableOpacity style={styles.lockedCard} onPress={() => router.push('/subscription')} activeOpacity={0.8}>
+      {/* Workout Plan — locked for free, unlocked for Pro */}
+      <TouchableOpacity
+        style={[styles.lockedCard, isPro && { borderColor: Colors.orange, opacity: 1 }]}
+        onPress={() => isPro ? router.push('/(tabs)/chat') : router.push('/subscription')}
+        activeOpacity={0.8}
+      >
         <View style={styles.lockedLeft}>
           <Text style={styles.lockedTitle}>Edit Your Workout Plan</Text>
-          <Text style={styles.lockedSub}>Customize your plan, track exercises, set targets</Text>
+          <Text style={styles.lockedSub}>
+            {isPro ? 'Tap to chat with Popeye and get a custom plan' : 'Customize your plan, track exercises, set targets'}
+          </Text>
         </View>
-        <View style={styles.proBadge}>
-          <Text style={styles.proText}>🔒 PRO</Text>
-        </View>
+        {!isPro && (
+          <View style={styles.proBadge}>
+            <Text style={styles.proText}>🔒 PRO</Text>
+          </View>
+        )}
+        {isPro && (
+          <View style={[styles.proBadge, { backgroundColor: Colors.orange }]}>
+            <Text style={styles.proText}>⚡ GO</Text>
+          </View>
+        )}
       </TouchableOpacity>
 
       {/* Menu */}
       <View style={styles.menuSection}>
         {[
-          { icon: '💳', label: 'Manage Subscription', onPress: () => router.push('/subscription') },
-          { icon: 'ℹ️', label: 'About Popeye', onPress: () => Alert.alert('Popeye', 'v1.0.0 — Powered by Groq') },
+          {
+            icon: '💳',
+            label: isPro ? 'Manage Subscription ⚡' : 'Manage Subscription',
+            sub: isPro ? 'Pro active' : 'Upgrade to Pro',
+            onPress: () => router.push('/subscription')
+          },
+          { icon: 'ℹ️', label: 'About Popeye', sub: null, onPress: () => Alert.alert('Popeye', 'v1.0.0 — Powered by Groq') },
         ].map(item => (
           <TouchableOpacity key={item.label} style={styles.menuItem} onPress={item.onPress}>
             <Text style={styles.menuIcon}>{item.icon}</Text>
-            <Text style={styles.menuLabel}>{item.label}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuLabel}>{item.label}</Text>
+              {item.sub && <Text style={{ fontSize: FontSizes.xs, color: isPro ? Colors.orange : Colors.textSecondary }}>{item.sub}</Text>}
+            </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
         ))}
@@ -300,28 +327,35 @@ export default function ProfileScreen() {
 
       {/* Log weight modal */}
       <Modal visible={showLogModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Log Today's Weight</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="e.g. 78.5"
-              placeholderTextColor={Colors.textSecondary}
-              value={newWeight}
-              onChangeText={setNewWeight}
-              keyboardType="decimal-pad"
-              autoFocus
-            />
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: Colors.border }]} onPress={() => setShowLogModal(false)}>
-                <Text style={{ color: Colors.white }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: Colors.orange, flex: 1 }]} onPress={logWeight}>
-                <Text style={{ color: Colors.white, fontWeight: '700' }}>Save</Text>
-              </TouchableOpacity>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Log Today's Weight</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. 78.5"
+                placeholderTextColor={Colors.textSecondary}
+                value={newWeight}
+                onChangeText={setNewWeight}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                onSubmitEditing={logWeight}
+                autoFocus
+              />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity style={[styles.modalBtn, { backgroundColor: Colors.border }]} onPress={() => { Keyboard.dismiss(); setShowLogModal(false); }}>
+                  <Text style={{ color: Colors.white }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, { backgroundColor: Colors.orange, flex: 1 }]} onPress={logWeight}>
+                  <Text style={{ color: Colors.white, fontWeight: '700' }}>Save</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScrollView>
   );
@@ -333,6 +367,8 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: FontSizes.lg, fontWeight: '800', color: Colors.white },
   planBtn: { backgroundColor: Colors.surface, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: Colors.border },
   planBtnText: { color: Colors.white, fontSize: FontSizes.xs, fontWeight: '700' },
+  proTag: { backgroundColor: Colors.orange, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  proTagText: { color: Colors.white, fontSize: 10, fontWeight: '800' },
   avatarSection: { alignItems: 'center', paddingVertical: 24 },
   avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: Colors.surface, borderWidth: 3, borderColor: Colors.orange, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   avatarEmoji: { fontSize: 36 },
