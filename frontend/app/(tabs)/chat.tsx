@@ -141,7 +141,7 @@ export default function ChatScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.messageList}
         style={styles.list}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         renderItem={({ item }) => (
           <View style={[styles.msgRow, item.role === 'user' ? styles.msgRowUser : styles.msgRowAI]}>

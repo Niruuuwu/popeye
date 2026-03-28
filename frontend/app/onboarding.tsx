@@ -34,7 +34,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.container} contentContainerStyle={styles.inner} keyboardShouldPersistTaps="always">
       <Text style={styles.logo}>🫛 Popeye</Text>
       <Text style={styles.title}>Set up your profile</Text>
       <Text style={styles.subtitle}>Popeye uses this to personalize your fitness advice</Text>
