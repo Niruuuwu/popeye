@@ -1,0 +1,29 @@
+# Environment variables - included intentionally for private repo sharing
+# .env
+# .env.local
+# .env.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Node / Expo
+node_modules/
+.expo/
+dist/
+build/
+
+# Kiro internal
+.kiro/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json

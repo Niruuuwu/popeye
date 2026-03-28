@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+supabase
+google-genai
+sentry-sdk[fastapi]
+python-jose[cryptography]
+pydantic[email]
+pydantic-settings
+python-dotenv
+httpx
+hypothesis
+pytest
+pytest-asyncio
