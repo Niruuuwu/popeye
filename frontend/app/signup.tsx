@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
+import { Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, FontSizes } from '../constants/theme';
@@ -40,8 +40,11 @@ export default function SignupScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.inner}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="always">
         <Text style={styles.logo}>🏋️ Popeye</Text>
         <Text style={styles.subtitle}>Create your account</Text>
         <TextInput style={styles.input} placeholder="Your name" placeholderTextColor={Colors.textSecondary} value={name} onChangeText={setName} />
@@ -53,14 +56,14 @@ export default function SignupScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.link}>Already have an account? <Text style={styles.linkAccent}>Sign In</Text></Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  inner: { flex: 1, justifyContent: 'center', paddingHorizontal: 28 },
+  inner: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 60 },
   logo: { fontSize: FontSizes.xxl, fontWeight: '800', color: Colors.white, textAlign: 'center', marginBottom: 6 },
   subtitle: { fontSize: FontSizes.md, color: Colors.textSecondary, textAlign: 'center', marginBottom: 40 },
   input: { backgroundColor: Colors.surface, borderRadius: 12, padding: 16, color: Colors.white, fontSize: FontSizes.md, marginBottom: 14, borderWidth: 1, borderColor: Colors.border },

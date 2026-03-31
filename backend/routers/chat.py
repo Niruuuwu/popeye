@@ -25,26 +25,12 @@ async def chat(
 
     # Check RevenueCat entitlement
     is_premium = await check_entitlement(user_id)
-    logger.debug("RevenueCat entitlement for user %s: premium=%s", user_id, is_premium)
+    logger.info("RevenueCat check for user %s: is_premium=%s", user_id, is_premium)
 
-    # Enforce free tier daily message limit
-    if not is_premium:
-        today = datetime.now(timezone.utc).date().isoformat()
-        count_result = (
-            supabase.table("messages")
-            .select("id", count="exact")
-            .eq("user_id", user_id)
-            .eq("role", "user")
-            .gte("created_at", f"{today}T00:00:00Z")
-            .execute()
-        )
-        daily_count = count_result.count or 0
-        if daily_count >= FREE_DAILY_LIMIT:
-            sentry_sdk.set_user({"id": user_id})
-            raise HTTPException(
-                status_code=402,
-                detail=f"Daily limit of {FREE_DAILY_LIMIT} messages reached. Upgrade to Pro for unlimited messages."
-            )
+    # NOTE: Message limit disabled — RevenueCat user ID sync pending native build
+    # In production, re-enable after configuring Purchases.logIn(supabaseUserId)
+    # if not is_premium:
+    #     ... limit check ...
 
     conversation_id = request.conversation_id
 

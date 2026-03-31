@@ -1,7 +1,7 @@
-# Environment variables - included intentionally for private repo sharing
-# .env
-# .env.local
-# .env.*
+# Environment variables - never commit these
+.env
+.env.local
+.env.*
 
 # Python
 __pycache__/

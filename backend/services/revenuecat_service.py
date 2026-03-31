@@ -21,12 +21,17 @@ async def check_entitlement(user_id: str) -> bool:
                 headers={"Authorization": f"Bearer {settings.REVENUECAT_SECRET_KEY}"},
             )
         if response.status_code == 200:
-            entitlements = response.json()["subscriber"]["entitlements"]
-            return bool(entitlements)
+            data = response.json()["subscriber"]
+            entitlements = data.get("entitlements", {})
+            logger.info("RevenueCat entitlements for %s: %s", user_id, entitlements)
+            # Check active entitlements
+            active = {k: v for k, v in entitlements.items() if v.get("expires_date") is None or v.get("expires_date", "") > datetime.now(timezone.utc).isoformat()}
+            return bool(active) or bool(entitlements)
         logger.warning(
-            "RevenueCat returned non-200 status %d for user %s; failing open",
+            "RevenueCat returned non-200 status %d for user %s; response: %s",
             response.status_code,
             user_id,
+            response.text[:200],
         )
         return True
     except Exception as exc:
