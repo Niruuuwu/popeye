@@ -1,8 +1,9 @@
 # Popeye — AI Fitness Chatbot
 
-A mobile fitness assistant built with React Native Expo and FastAPI. Chat with an AI coach, track your weight, and manage subscriptions.
+a mobile fitness coach app that lets you talk to an ai trainer instead of scrolling through generic workout plans. built with react native (expo) on the frontend and a fastapi backend, it uses the gemini api to hold actual conversations about your fitness goals, form, and progress instead of just spitting out static routines. supabase handles auth and data storage, revenuecat manages subscriptions, and sentry tracks crashes/errors in production. backend was tunneled through ngrok during development for testing on-device before deployment.
 
-**Stack:** React Native (Expo) · FastAPI · Supabase · Groq AI · RevenueCat · Sentry · Ngrok
+tech stack (README section):
+react native (expo) · fastapi · supabase · gemini api · revenuecat · sentry · ngrok
 
 ---
 
